@@ -117,7 +117,15 @@ func main() {
 				if errs != nil {
 					return
 				}
-				if strings.HasPrefix(srcESVersion.Version.Number, "7.") {
+				if strings.HasPrefix(srcESVersion.Version.Number, "8.") {
+					log.Debug("source es is V8,", srcESVersion.Version.Number)
+					api := new(ESAPIV7)
+					api.Host = c.SourceEs
+					api.Compress=c.Compress
+					api.Auth = migrator.SourceAuth
+					api.HttpProxy = migrator.Config.SourceProxy
+					migrator.SourceESAPI = api
+				} else if strings.HasPrefix(srcESVersion.Version.Number, "7.") {
 					log.Debug("source es is V7,", srcESVersion.Version.Number)
 					api := new(ESAPIV7)
 					api.Host = c.SourceEs
