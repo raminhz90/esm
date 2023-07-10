@@ -76,8 +76,6 @@ func main() {
 	} else {
 		showBar = false
 	}
-
-	//至少输出一次
 	if c.RepeatOutputTimes < 1 {
 		c.RepeatOutputTimes = 1
 	} else {
