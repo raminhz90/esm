@@ -4,12 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/cheggaaa/pb"
-	log "github.com/cihub/seelog"
-	goflags "github.com/jessevdk/go-flags"
-	"github.com/mattn/go-isatty"
 	"io"
-	"io/ioutil"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -18,6 +13,11 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/cheggaaa/pb"
+	log "github.com/cihub/seelog"
+	goflags "github.com/jessevdk/go-flags"
+	"github.com/mattn/go-isatty"
 )
 
 func main() {
@@ -79,8 +79,8 @@ func main() {
 
 	//至少输出一次
 	if c.RepeatOutputTimes < 1 {
-		c.RepeatOutputTimes=1
-	}else{
+		c.RepeatOutputTimes = 1
+	} else {
 		log.Info("source data will repeat send to target: ", c.RepeatOutputTimes, " times, the document id will be regenerated.")
 	}
 
@@ -88,7 +88,7 @@ func main() {
 
 		for i := 0; i < c.RepeatOutputTimes; i++ {
 
-			if c.RepeatOutputTimes>1 {
+			if c.RepeatOutputTimes > 1 {
 				log.Info("repeat round: ", i+1)
 			}
 
@@ -121,7 +121,7 @@ func main() {
 					log.Debug("source es is V8,", srcESVersion.Version.Number)
 					api := new(ESAPIV7)
 					api.Host = c.SourceEs
-					api.Compress=c.Compress
+					api.Compress = c.Compress
 					api.Auth = migrator.SourceAuth
 					api.HttpProxy = migrator.Config.SourceProxy
 					migrator.SourceESAPI = api
@@ -129,14 +129,14 @@ func main() {
 					log.Debug("source es is V7,", srcESVersion.Version.Number)
 					api := new(ESAPIV7)
 					api.Host = c.SourceEs
-					api.Compress=c.Compress
+					api.Compress = c.Compress
 					api.Auth = migrator.SourceAuth
 					api.HttpProxy = migrator.Config.SourceProxy
 					migrator.SourceESAPI = api
 				} else if strings.HasPrefix(srcESVersion.Version.Number, "6.") {
 					log.Debug("source es is V6,", srcESVersion.Version.Number)
 					api := new(ESAPIV6)
-					api.Compress=c.Compress
+					api.Compress = c.Compress
 					api.Host = c.SourceEs
 					api.Auth = migrator.SourceAuth
 					api.HttpProxy = migrator.Config.SourceProxy
@@ -145,7 +145,7 @@ func main() {
 					log.Debug("source es is V5,", srcESVersion.Version.Number)
 					api := new(ESAPIV5)
 					api.Host = c.SourceEs
-					api.Compress=c.Compress
+					api.Compress = c.Compress
 					api.Auth = migrator.SourceAuth
 					api.HttpProxy = migrator.Config.SourceProxy
 					migrator.SourceESAPI = api
@@ -153,7 +153,7 @@ func main() {
 					log.Debug("source es is not V5,", srcESVersion.Version.Number)
 					api := new(ESAPIV0)
 					api.Host = c.SourceEs
-					api.Compress=c.Compress
+					api.Compress = c.Compress
 					api.Auth = migrator.SourceAuth
 					api.HttpProxy = migrator.Config.SourceProxy
 					migrator.SourceESAPI = api
@@ -183,14 +183,14 @@ func main() {
 							return
 						}
 
+						wg.Add(1)
 						go func() {
-							wg.Add(1)
 							//process input
 							// start scroll
 							temp.ProcessScrollResult(&migrator, fetchBar)
 
 							// loop scrolling until done
-							for temp.Next(&migrator, fetchBar) == false {
+							for !temp.Next(&migrator, fetchBar) {
 							}
 
 							if showBar {
@@ -268,8 +268,14 @@ func main() {
 				if errs != nil {
 					return
 				}
-
-				if strings.HasPrefix(descESVersion.Version.Number, "7.") {
+				if strings.HasPrefix(descESVersion.Version.Number, "8.") {
+					log.Debug("target es is V8,", descESVersion.Version.Number)
+					api := new(ESAPIV8)
+					api.Host = c.TargetEs
+					api.Auth = migrator.TargetAuth
+					api.HttpProxy = migrator.Config.TargetProxy
+					migrator.TargetESAPI = api
+				} else if strings.HasPrefix(descESVersion.Version.Number, "7.") {
 					log.Debug("target es is V7,", descESVersion.Version.Number)
 					api := new(ESAPIV7)
 					api.Host = c.TargetEs
@@ -291,7 +297,8 @@ func main() {
 					api.HttpProxy = migrator.Config.TargetProxy
 					migrator.TargetESAPI = api
 				} else {
-					log.Debug("target es is not V5,", descESVersion.Version.Number)
+					log.Debug("target es is not recognized,", descESVersion.Version.Number)
+					log.Warn("target es version is either older than 5 or newer than 8, trying pre V5 apis ....")
 					api := new(ESAPIV0)
 					api.Host = c.TargetEs
 					api.Auth = migrator.TargetAuth
@@ -475,9 +482,6 @@ func main() {
 					}
 
 					defer migrator.recoveryIndexSettings(sourceIndexRefreshSettings)
-				} else if len(c.DumpInputFile) > 0 {
-					//check shard settings
-					//TODO support shard config
 				}
 
 			}
@@ -531,11 +535,11 @@ func (c *Migrator) recoveryIndexSettings(sourceIndexRefreshSettings map[string]i
 
 func (c *Migrator) ClusterVersion(host string, auth *Auth, proxy string) (*ClusterVersion, []error) {
 
-	url := fmt.Sprintf("%s", host)
+	url := fmt.Sprint(host)
 	resp, body, errs := Get(url, auth, proxy)
 
 	if resp != nil && resp.Body != nil {
-		io.Copy(ioutil.Discard, resp.Body)
+		io.Copy(io.Discard, resp.Body)
 		defer resp.Body.Close()
 	}
 
@@ -567,7 +571,7 @@ func (c *Migrator) ClusterReady(api ESAPI) (*ClusterHealth, bool) {
 		return health, false
 	}
 
-	if c.Config.WaitForGreen == false && health.Status == "yellow" {
+	if !c.Config.WaitForGreen && health.Status == "yellow" {
 		return health, true
 	}
 

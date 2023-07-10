@@ -1,40 +1,25 @@
-/*
-Copyright 2016 Medcl (m AT medcl.net)
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package main
 
 import (
-	"sync"
-	"github.com/cheggaaa/pb"
-	log "github.com/cihub/seelog"
-	"os"
 	"bufio"
 	"encoding/json"
 	"io"
+	"os"
+	"sync"
+
+	"github.com/cheggaaa/pb"
+	log "github.com/cihub/seelog"
 )
 
-func checkFileIsExist(filename string) (bool) {
-	var exist = true;
+func checkFileIsExist(filename string) bool {
+	var exist = true
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
-		exist = false;
+		exist = false
 	}
-	return exist;
+	return exist
 }
 
-func (m *Migrator) NewFileReadWorker(pb *pb.ProgressBar, wg *sync.WaitGroup)  {
+func (m *Migrator) NewFileReadWorker(pb *pb.ProgressBar, wg *sync.WaitGroup) {
 	log.Debug("start reading file")
 	f, err := os.Open(m.Config.DumpInputFile)
 	if err != nil {
@@ -45,16 +30,16 @@ func (m *Migrator) NewFileReadWorker(pb *pb.ProgressBar, wg *sync.WaitGroup)  {
 	defer f.Close()
 	r := bufio.NewReader(f)
 	lineCount := 0
-	for{
-		line,err := r.ReadString('\n')
-		if io.EOF == err || nil != err{
+	for {
+		line, err := r.ReadString('\n')
+		if io.EOF == err || nil != err {
 			break
 		}
 		lineCount += 1
 		js := map[string]interface{}{}
 
 		err = DecodeJson(line, &js)
-		if err!=nil {
+		if err != nil {
 			log.Error(err)
 			continue
 		}
@@ -70,18 +55,18 @@ func (m *Migrator) NewFileReadWorker(pb *pb.ProgressBar, wg *sync.WaitGroup)  {
 
 func (c *Migrator) NewFileDumpWorker(pb *pb.ProgressBar, wg *sync.WaitGroup) {
 	var f *os.File
-	var err1   error;
+	var err1 error
 
 	if checkFileIsExist(c.Config.DumpOutFile) {
 		f, err1 = os.OpenFile(c.Config.DumpOutFile, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
-		if(err1!=nil){
+		if err1 != nil {
 			log.Error(err1)
 			return
 		}
 
-	}else {
+	} else {
 		f, err1 = os.Create(c.Config.DumpOutFile)
-		if(err1!=nil){
+		if err1 != nil {
 			log.Error(err1)
 			return
 		}
@@ -89,7 +74,7 @@ func (c *Migrator) NewFileDumpWorker(pb *pb.ProgressBar, wg *sync.WaitGroup) {
 
 	w := bufio.NewWriter(f)
 
-	READ_DOCS:
+READ_DOCS:
 	for {
 		docI, open := <-c.DocChan
 		// this check is in case the document is an error with scroll stuff
@@ -101,20 +86,20 @@ func (c *Migrator) NewFileDumpWorker(pb *pb.ProgressBar, wg *sync.WaitGroup) {
 		}
 
 		// sanity check
-		for _, key := range []string{"_index", "_type", "_source", "_id"} {
+		for _, key := range []string{"_index", "_source", "_id"} {
 			if _, ok := docI[key]; !ok {
 				break READ_DOCS
 			}
 		}
 
-		jsr,err:=json.Marshal(docI)
+		jsr, err := json.Marshal(docI)
 		log.Trace(string(jsr))
-		if(err!=nil){
+		if err != nil {
 			log.Error(err)
 		}
-		n,err:=w.WriteString(string(jsr))
-		if(err!=nil){
-			log.Error(n,err)
+		n, err := w.WriteString(string(jsr))
+		if err != nil {
+			log.Error(n, err)
 		}
 		w.WriteString("\n")
 		pb.Increment()
@@ -125,12 +110,10 @@ func (c *Migrator) NewFileDumpWorker(pb *pb.ProgressBar, wg *sync.WaitGroup) {
 		}
 	}
 
-	WORKER_DONE:
+WORKER_DONE:
 	w.Flush()
 	f.Close()
 
 	wg.Done()
 	log.Debug("file dump finished")
 }
-
-

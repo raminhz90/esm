@@ -1,28 +1,13 @@
-/*
-Copyright 2016 Medcl (m AT medcl.net)
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package main
 
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/cheggaaa/pb"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/cheggaaa/pb"
 
 	log "github.com/cihub/seelog"
 )
@@ -44,7 +29,6 @@ func (c *Migrator) NewBulkWorker(docCount *int, pb *pb.ProgressBar, wg *sync.Wai
 	taskTimeout := time.NewTimer(taskTimeOutDuration)
 	defer taskTimeout.Stop()
 
-
 READ_DOCS:
 	for {
 		idleTimeout.Reset(idleDuration)
@@ -62,7 +46,7 @@ READ_DOCS:
 			}
 
 			// sanity check
-			for _, key := range []string{"_index", "_type", "_source", "_id"} {
+			for _, key := range []string{"_index", "_source", "_id"} {
 				if _, ok := docI[key]; !ok {
 					break READ_DOCS
 				}
@@ -138,7 +122,6 @@ READ_DOCS:
 				log.Error(err)
 			}
 
-
 			// append the doc to the main buffer
 			mainBuf.Write(docBuf.Bytes())
 			// reset for next document
@@ -147,7 +130,7 @@ READ_DOCS:
 			docBuf.Reset()
 
 			// if we approach the 100mb es limit, flush to es and reset mainBuf
-			if mainBuf.Len()+docBuf.Len() > (c.Config.BulkSizeInMB * 1024*1024) {
+			if mainBuf.Len()+docBuf.Len() > (c.Config.BulkSizeInMB * 1024 * 1024) {
 				goto CLEAN_BUFFER
 			}
 
@@ -166,7 +149,7 @@ READ_DOCS:
 		log.Trace("clean buffer, and execute bulk insert")
 		pb.Add(bulkItemSize)
 		bulkItemSize = 0
-		if c.Config.SleepSecondsAfterEachBulk >0{
+		if c.Config.SleepSecondsAfterEachBulk > 0 {
 			time.Sleep(time.Duration(c.Config.SleepSecondsAfterEachBulk) * time.Second)
 		}
 	}

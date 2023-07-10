@@ -7,7 +7,7 @@ esm.log
 *.o
 *.a
 *.so
-
+.vscode
 # Folders
 _obj
 _test

@@ -1,19 +1,3 @@
-/*
-Copyright 2016 Medcl (m AT medcl.net)
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-   http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package main
 
 import "sync"
@@ -111,7 +95,7 @@ type Config struct {
 	SourceEsAuthStr     string `short:"m" long:"source_auth"  description:"basic auth of source elasticsearch instance, ie: user:pass"`
 	TargetEsAuthStr     string `short:"n" long:"dest_auth"  description:"basic auth of target elasticsearch instance, ie: user:pass"`
 	DocBufferCount      int    `short:"c" long:"count"   description:"number of documents at a time: ie \"size\" in the scroll request" default:"10000"`
-	BufferCount      int    `long:"buffer_count"   description:"number of buffered documents in memory" default:"1000000"`
+	BufferCount         int    `long:"buffer_count"   description:"number of buffered documents in memory" default:"1000000"`
 	Workers             int    `short:"w" long:"workers" description:"concurrency number for bulk workers" default:"1"`
 	BulkSizeInMB        int    `short:"b" long:"bulk_size" description:"bulk size in MB" default:"5"`
 	ScrollTime          string `short:"t" long:"time"    description:"scroll time" default:"10m"`

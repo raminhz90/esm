@@ -6,59 +6,29 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"regexp"
 	"strings"
 
 	log "github.com/cihub/seelog"
 )
 
-type ESAPIV7 struct {
-	ESAPIV6
+// ESAPIV8 is a struct representing an Elasticsearch API version 8.
+type ESAPIV8 struct {
+	ESAPIV7
 }
 
-func (s *ESAPIV7) NewScroll(indexNames string, scrollTime string, docBufferCount int, query string, slicedId, maxSlicedCount int, fields string) (scroll interface{}, err error) {
+// NewScroll creates a  scroll in Elasticsearch API version 8.
+func (s *ESAPIV8) NewScroll(indexNames string, scrollTime string, docBufferCount int, query string, slicedId, maxSlicedCount int, fields string) (scroll interface{}, err error) {
+	// Build the URL for the Elasticsearch search API with scroll.
 	url := fmt.Sprintf("%s/%s/_search?scroll=%s&size=%d", s.Host, indexNames, scrollTime, docBufferCount)
 
-	jsonBody := ""
-	if len(query) > 0 || maxSlicedCount > 0 || len(fields) > 0 {
-		queryBody := map[string]interface{}{}
+	// Create the body of the request if necessary.
+	jsonBody := createJSONBody(query, maxSlicedCount, fields, slicedId)
 
-		if len(fields) > 0 {
-			if !strings.Contains(fields, ",") {
-				queryBody["_source"] = fields
-			} else {
-				queryBody["_source"] = strings.Split(fields, ",")
-			}
-		}
-
-		if len(query) > 0 {
-			queryBody["query"] = map[string]interface{}{}
-			queryBody["query"].(map[string]interface{})["query_string"] = map[string]interface{}{}
-			queryBody["query"].(map[string]interface{})["query_string"].(map[string]interface{})["query"] = query
-		}
-
-		if maxSlicedCount > 1 {
-			log.Tracef("sliced scroll, %d of %d", slicedId, maxSlicedCount)
-			queryBody["slice"] = map[string]interface{}{}
-			queryBody["slice"].(map[string]interface{})["id"] = slicedId
-			queryBody["slice"].(map[string]interface{})["max"] = maxSlicedCount
-		}
-
-		jsonArray, err := json.Marshal(queryBody)
-		if err != nil {
-			log.Error(err)
-
-		} else {
-			jsonBody = string(jsonArray)
-		}
-	}
-
+	// Send the POST request.
 	resp, body, errs := Post(url, s.Auth, jsonBody, s.HttpProxy)
-
-	if resp != nil && resp.Body != nil {
-		io.Copy(io.Discard, resp.Body)
-		defer resp.Body.Close()
-	}
+	defer closeResponse(resp)
 
 	if errs != nil {
 		log.Error(errs)
@@ -71,11 +41,7 @@ func (s *ESAPIV7) NewScroll(indexNames string, scrollTime string, docBufferCount
 
 	log.Trace("new scroll,", body)
 
-	if err != nil {
-		log.Error(err)
-		return nil, err
-	}
-
+	// Parse the response.
 	scroll = &ScrollV7{}
 	err = DecodeJson(body, scroll)
 	if err != nil {
@@ -85,8 +51,54 @@ func (s *ESAPIV7) NewScroll(indexNames string, scrollTime string, docBufferCount
 
 	return scroll, err
 }
+func createJSONBody(query string, maxSlicedCount int, fields string, slicedId int) string {
+	if len(query) == 0 && maxSlicedCount == 0 && len(fields) == 0 {
+		return ""
+	}
 
-func (s *ESAPIV7) NextScroll(scrollTime string, scrollId string) (interface{}, error) {
+	queryBody := make(map[string]interface{})
+
+	if len(fields) > 0 {
+		if !strings.Contains(fields, ",") {
+			queryBody["_source"] = fields
+		} else {
+			queryBody["_source"] = strings.Split(fields, ",")
+		}
+	}
+
+	if len(query) > 0 {
+		queryBody["query"] = map[string]interface{}{
+			"query_string": map[string]interface{}{
+				"query": query,
+			},
+		}
+	}
+
+	if maxSlicedCount > 1 {
+		log.Tracef("sliced scroll, %d of %d", slicedId, maxSlicedCount)
+		queryBody["slice"] = map[string]interface{}{
+			"id":  slicedId,
+			"max": maxSlicedCount,
+		}
+	}
+
+	jsonArray, err := json.Marshal(queryBody)
+	if err != nil {
+		log.Error(err)
+		return ""
+	}
+
+	return string(jsonArray)
+}
+
+// closeResponse closes the HTTP response body.
+func closeResponse(resp *http.Response) {
+	if resp != nil && resp.Body != nil {
+		io.Copy(io.Discard, resp.Body)
+		resp.Body.Close()
+	}
+}
+func (s *ESAPIV8) NextScroll(scrollTime string, scrollId string) (interface{}, error) {
 	id := bytes.NewBufferString(scrollId)
 
 	url := fmt.Sprintf("%s/_search/scroll?scroll=%s&scroll_id=%s", s.Host, scrollTime, id)
@@ -107,15 +119,15 @@ func (s *ESAPIV7) NextScroll(scrollTime string, scrollId string) (interface{}, e
 	return scroll, nil
 }
 
-func (s *ESAPIV7) GetIndexSettings(indexNames string) (*Indexes, error) {
+func (s *ESAPIV8) GetIndexSettings(indexNames string) (*Indexes, error) {
 	return s.ESAPIV0.GetIndexSettings(indexNames)
 }
 
-func (s *ESAPIV7) UpdateIndexSettings(indexName string, settings map[string]interface{}) error {
+func (s *ESAPIV8) UpdateIndexSettings(indexName string, settings map[string]interface{}) error {
 	return s.ESAPIV0.UpdateIndexSettings(indexName, settings)
 }
 
-func (s *ESAPIV7) GetIndexMappings(copyAllIndexes bool, indexNames string) (string, int, *Indexes, error) {
+func (s *ESAPIV8) GetIndexMappings(copyAllIndexes bool, indexNames string) (string, int, *Indexes, error) {
 	url := fmt.Sprintf("%s/%s/_mapping", s.Host, indexNames)
 	resp, body, errs := Get(url, s.Auth, s.HttpProxy)
 
@@ -182,13 +194,11 @@ func (s *ESAPIV7) GetIndexMappings(copyAllIndexes bool, indexNames string) (stri
 	return indexNames, i, &idxs, nil
 }
 
-func (s *ESAPIV7) UpdateIndexMapping(indexName string, settings map[string]interface{}) error {
+func (s *ESAPIV8) UpdateIndexMapping(indexName string, settings map[string]interface{}) error {
 
 	log.Debug("start update mapping: ", indexName, settings)
 
 	delete(settings, "dynamic_templates")
-
-	//for name, mapping := range settings {
 
 	log.Debug("start update mapping: ", indexName, ", ", settings)
 
@@ -204,6 +214,5 @@ func (s *ESAPIV7) UpdateIndexMapping(indexName string, settings map[string]inter
 		log.Error(err, res)
 		panic(err)
 	}
-	//}
 	return nil
 }

@@ -2,12 +2,9 @@
 
 Elasticsearch cross version data migration.
 
-Links:
-- [Dec 3rd, 2020: [EN] Cross version Elasticsearch data migration with ESM](https://discuss.elastic.co/t/dec-3rd-2020-en-cross-version-elasticsearch-data-migration-with-esm/256516)
-- [Use INFINI Gateway to check the Document-Level differences between two clusters or indices after the migration](https://gateway.infinilabs.com/docs/tutorial/index_diff/)
 
 ## Features:
-
+*  Support for ElasticSearch 8
 *  Cross version migration supported
 *  Overwrite index name
 *  Copy index settings and mapping
@@ -88,7 +85,7 @@ copy settings and mapping, recreate target index, add query to source fetch, ref
 
 dump elasticsearch documents into local file
 ```
-./bin/esm -s http://localhost:9200 -x "src_index"  -m admin:111111 -c 5000 -q=query:mixer  --refresh -o=dump.bin 
+./bin/esm -s http://localhost:9200 -x "src_index"  -m admin:111111 -c 5000   --refresh -o=dump.bin 
 ```
 
 loading data from dump files, bulk insert to another es instance
