@@ -1,0 +1,65 @@
+name: Build and Publish Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+      
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Build and package project
+        run: |
+          go build -o esm-linux-amd64 main.go
+          GOOS=windows GOARCH=amd64 go build -o esm-windows-amd64.exe main.go
+          GOOS=darwin GOARCH=amd64 go build -o esm-darwin-amd64 main.go
+      
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v1.0.0
+          release_name: Release v1.0.0
+          body: |
+            Add Support For ElasticSearch 8
+          draft: false
+          prerelease: false
+      
+      - name: Upload Linux AMD64 binary
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./esm-linux-amd64
+          asset_name: esm-linux-amd64
+      
+      - name: Upload Windows AMD64 binary
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./esm-windows-amd64.exe
+          asset_name: esm-windows-amd64.exe
+      
+      - name: Upload macOS AMD64 binary
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./esm-darwin-amd64
+          asset_name: esm-darwin-amd64
