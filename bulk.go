@@ -55,7 +55,12 @@ READ_DOCS:
 			var tempDestIndexName string
 			var tempTargetTypeName string
 			tempDestIndexName = docI["_index"].(string)
-			tempTargetTypeName = docI["_type"].(string)
+			if t, ok := docI["_type"].(string); ok {
+				tempTargetTypeName = t
+			} else {
+				// either nil/missing or not a string
+				tempTargetTypeName = ""
+			}
 
 			if c.Config.TargetIndexName != "" {
 				tempDestIndexName = c.Config.TargetIndexName
