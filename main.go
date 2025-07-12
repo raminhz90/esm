@@ -266,6 +266,14 @@ func main() {
 				if errs != nil {
 					return
 				}
+				if strings.HasPrefix(descESVersion.Version.Number, "9.") {
+					log.Debug("target es is V9,", descESVersion.Version.Number)
+					api := new(ESAPIV8)
+					api.Host = c.TargetEs
+					api.Auth = migrator.TargetAuth
+					api.HttpProxy = migrator.Config.TargetProxy
+					migrator.TargetESAPI = api
+				}
 				if strings.HasPrefix(descESVersion.Version.Number, "8.") {
 					log.Debug("target es is V8,", descESVersion.Version.Number)
 					api := new(ESAPIV8)
