@@ -111,7 +111,7 @@ READ_DOCS:
 			}
 
 			// sanity check
-			if len(doc.Index) == 0 || len(doc.Type) == 0 {
+			if len(doc.Index) == 0  {
 				log.Errorf("failed decoding document: %+v", doc)
 				continue
 			}
